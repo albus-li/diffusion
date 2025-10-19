@@ -386,3 +386,90 @@ You could consider adding a suitable metric to the training loop yourself after 
     url     = {https://api.semanticscholar.org/CorpusID:273098845}
 }
 ```
+
+----------------
+
+# Repo Structure
+
+## Quick plan
+I'll summarize each file under `denoising_diffusion_pytorch/` based on the listing you provided and common diffusion repo patterns, and point out where downloads or cache logic typically live and what to open next.
+
+## Files and what they likely contain
+
+- `__init__.py`
+  - Package initializer. Probably exposes main classes or convenience imports (e.g., from .denoising_diffusion_pytorch import Unet, GaussianDiffusion, etc.). Good place to see the public API.
+
+- `attend.py`
+  - Attention layers or modules used by the U-Net. Likely implements multi-head attention, spatial/channel attention, or cross-attention helpers used in the model.
+
+- `classifier_free_guidance.py`
+  - Utilities to run classifier-free guidance at sampling time. Likely contains functions that combine conditional and unconditional model outputs, or helper wrappers to run guidance.
+
+- `continuous_time_gaussian_diffusion.py`
+  - Implements diffusion processes parameterized in continuous time (t in [0,1]) rather than discrete timesteps. Contains schedulers, noise schedules, and probably sampling/denoising loops specialized to continuous-time parameterizations.
+
+- `denoising_diffusion_pytorch_1d.py`
+  - A 1D variant of the diffusion model (for audio or time-series). Contains a U-Net or diffusion training/sampling logic adapted to 1D convolutions.
+
+- `denoising_diffusion_pytorch.py`
+  - The main entrypoint for the discrete-time diffusion model. Expect:
+    - Model class (U-Net) or importing/constructing it.
+    - GaussianDiffusion trainer class: forward denoising, loss calculation, sampling.
+    - Training loop helpers, sampling functions (p_sample_loop, sample, etc.).
+  - This is the file to open first to understand training and sampling flow.
+
+- `elucidated_diffusion.py`
+  - Implementation of Elucidated Diffusion Models (EDM) — sampling and training modifications proposed in the EDM paper (Karras et al. style samplers, different noise scaling). Contains sampling code and specialized noise/scheduler utilities.
+
+- `fid_evaluation.py`
+  - Utilities to compute FID score (Fréchet Inception Distance) between generated images and a dataset. Likely wraps an Inception model, dataset loading, and FID calculation.
+
+- `guided_diffusion.py`
+  - Implements guidance strategies (e.g., classifier guidance or other conditioning mechanisms). Might include classifier-based guidance helpers and wrappers to apply gradient-based guidance during sampling.
+
+- `karras_unet_1d.py`
+  - A U-Net variant implementing Karras-style modifications for 1D signals (like the Karras et al. DDPM/EDM architectures). Contains building blocks and model class.
+
+- `karras_unet_3d.py`
+  - 3D U-Net variant for volumetric data (3D convolutions) with Karras-style enhancements.
+
+- `karras_unet.py`
+  - 2D U-Net with Karras et al. architecture tweaks (scaled activations, advanced resblocks, attention, residuals). This file often contains the model architecture used by EDM implementations.
+
+- `learned_gaussian_diffusion.py`
+  - Implements Gaussian diffusion where some parameters are learned rather than fixed (e.g., learned variance, parameterized noise schedules). Contains training and sampling code adapted to learned parameters.
+
+- `repaint.py`
+  - RePaint algorithm implementation — iterative masking/inpainting sampling algorithm for conditional inpainting tasks. Contains specific sampling loops that alternate masking and denoising.
+
+- `simple_diffusion.py`
+  - A minimal/simple diffusion implementation for clarity or debugging. Good reference to understand core ideas without bells and whistles.
+
+- `v_param_continuous_time_gaussian_diffusion.py`
+  - Continuous-time diffusion variant that parameterizes the model output as v (a mix of noise and denoised sample), following the v-parameterization used in some papers. Contains scheduler and training/sampling loops.
+
+- `version.py`
+  - Package version string (e.g., __version__ variable). Used by setup.py or to check package version.
+
+- `weighted_objective_gaussian_diffusion.py`
+  - Gaussian diffusion training with weighted objectives (e.g., per-timestep weighting, reweighting losses). Contains the loss computation logic and possibly schedules for weights.
+
+- `classifier_free_guidance.py` (note: already listed above — if there are two similarly named files, one might be duplicated; check file contents)
+  - (If present twice, one might be the public wrapper and another a more experimental version — open both to confirm.)
+
+## Where downloads or large-file caching usually appear
+This repo appears to be mostly model and training code (no obvious HF hub code in the filenames). Places downloads or large-file cache logic would typically appear:
+- A `scripts/` folder or top-level `demo.py`, `setup.py`, or README instructions (not in the `denoising_diffusion_pytorch/` folder you listed).
+- `fid_evaluation.py` might download an Inception model checkpoint or use torchvision/huggingface utilities that cache weights.
+- Any file that calls `torch.hub.load`, `from_pretrained`, or Hugging Face functions could trigger downloads. Search terms: `torch.hub`, `load_state_dict_from_url`, `model_zoo`, `hf_hub_download`, `from_pretrained`, `inception`, `download`.
+- `karras_unet*` or `*unet.py` may include pretrained checkpoints in examples or tests, but not typical.
+
+If you want me to find exact download lines, I can search the repo for the terms above and open the matching files.
+
+## Recommended next steps
+- If you want exact locations of downloads/cache code, tell me and I will:
+  - Search for strings: `torch.hub.load`, `hf_hub_download`, `from_pretrained`, `load_state_dict_from_url`, `cached_path`, `model_zoo`, `inception`, `download`.
+  - Open files that match and change default cache path logic (e.g., use XDG or an env var).
+- If you want I can open `denoising_diffusion_pytorch.py` and `karras_unet.py` to give a short tour of the training and sampling API (methods and parameters).
+
+What would you like next — search for download calls, or open specific files for a deeper walkthrough?
